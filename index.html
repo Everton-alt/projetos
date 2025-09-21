@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Recebimentos</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Login do Sistema</h1>
+        </div>
+        <div id="login-form" class="card">
+            <h2>Acessar</h2>
+            <div id="login-message" class="alert" style="display:none;"></div>
+            <div class="form-group">
+                <label for="login-username">Usuário</label>
+                <select id="login-username" required></select>
+            </div>
+            <div class="form-group">
+                <label for="login-password">Senha</label>
+                <input type="password" id="login-password" required>
+            </div>
+            <button class="btn btn-primary" onclick="handleLogin()">Entrar</button>
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            auth.init();
+            render.populateLoginUsers();
+        });
+
+        const handleLogin = () => {
+            const username = document.getElementById('login-username').value;
+            const password = document.getElementById('login-password').value;
+            const msgEl = document.getElementById('login-message');
+            
+            if (auth.login(username, password)) {
+                window.location.href = 'dashboard.html';
+            } else {
+                msgEl.style.display = 'block';
+                msgEl.className = 'alert alert-error';
+                msgEl.textContent = 'Credenciais inválidas. Tente novamente.';
+            }
+        };
+    </script>
+</body>
+</html>

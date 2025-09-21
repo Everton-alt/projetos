@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Planilha de Recebimentos</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Planilha de Recebimentos</h1>
+            <div class="user-info">
+                <span id="welcomeMessage"></span> |
+                <span>Dados de Recebimento</span> |
+                <a href="dashboard.html" style="color: white;">Voltar ao Painel</a>
+                <a href="#" onclick="auth.logout()" style="color: white; margin-left: 10px;">Sair</a>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2>Filtros</h2>
+            <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                <div class="form-group" style="flex-grow: 1;">
+                    <label for="filterList">Nº da Lista:</label>
+                    <input type="text" id="filterList" placeholder="Pesquisar por Nº da Lista">
+                </div>
+                <div class="form-group" style="flex-grow: 1;">
+                    <label for="filterDays">Prazo:</label>
+                    <select id="filterDays">
+                        <option value="">Todos</option>
+                        <option value="0 a 5 dias">0 a 5 dias</option>
+                        <option value="6 a 10 dias">6 a 10 dias</option>
+                        <option value="11 a 15 dias">11 a 15 dias</option>
+                        <option value="16 a 30 dias">16 a 30 dias</option>
+                        <option value="31 a 60 dias">31 a 60 dias</option>
+                        <option value="61 a 90 dias">61 a 90 dias</option>
+                        <option value="91 a 120 dias">91 a 120 dias</option>
+                        <option value="Maior que 120 dias">Maior que 120 dias</option>
+                    </select>
+                </div>
+            </div>
+            <button class="btn btn-primary" style="margin-top: 15px;" onclick="filterData()">Filtrar</button>
+            <button class="btn btn-secondary" style="margin-top: 15px;" onclick="exportToExcel()">Exportar para Excel</button>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Prazo</th>
+                    <th>Nº da Lista</th>
+                    <th>Local</th>
+                    <th>Recebido por</th>
+                    <th>Obs</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody id="dataTableBody">
+                </tbody>
+        </table>
+    </div>
+
+    <div id="logModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal()">&times;</span>
+            <h2>Histórico de Modificações</h2>
+            <pre id="logContent"></pre>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="script.js"></script>
+    <script>
+        let allData = [];
+        let visibleData = []; 
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const user = auth.getCurrentUser();
+            if (user && user.name) {
+                document.getElementById('welcomeMessage').textContent = `Bem-vindo, ${user.name}!`;
+            }
+            
+            allData = dataManager.load();
+            render.data(allData); 
+        });
+
+        // Adapta a função render.data para incluir o botão de exclusão para administradores
+        render.data = (data) => {
+            if (!auth.isLoggedIn()) {
+                window.location.href = 'index.html';
+            }
+            const user = auth.getCurrentUser();
+            const isAdmin = user && user.role === 'admin';
+            const tableBody = document.getElementById('dataTableBody');
+            tableBody.innerHTML = '';
+            
+            if (!Array.isArray(data) || data.length === 0) {
+                const emptyMessage = document.createElement('tr');
+                emptyMessage.innerHTML = `<td colspan="7" style="text-align: center;">Nenhum recebimento registrado.</td>`;
+                tableBody.appendChild(emptyMessage);
+                return;
+            }
+            
+            data.forEach((entry, index) => {
+                const row = tableBody.insertRow();
+                row.setAttribute('data-index', index);
+                const daysSinceReceipt = calculateDays(entry.receiptDate);
+                const daysCategory = getDaysCategory(daysSinceReceipt);
+
+                // Constrói os botões de ação
+                let actionButtons = `
+                    <button class="btn btn-secondary" onclick="updateRow(${index})">Atualizar</button>
+                    <button class="btn btn-secondary" onclick="showLog(${index})">Ver Log</button>
+                `;
+                // Adiciona o botão de exclusão APENAS para administradores
+                if (isAdmin) {
+                    actionButtons += `<button class="btn btn-danger" onclick="deleteRow(${index})">Excluir</button>`;
+                }
+                
+                row.innerHTML = `
+                    <td contenteditable="true" data-field="receiptDate">${entry.receiptDate}</td>
+                    <td contenteditable="false">${daysSinceReceipt} dias (${daysCategory})</td>
+                    <td contenteditable="true" data-field="listNumber">${entry.listNumber}</td>
+                    <td contenteditable="true" data-field="location">${entry.location}</td>
+                    <td contenteditable="false">${entry.receivedBy}</td>
+                    <td contenteditable="true" data-field="obs">${entry.obs}</td>
+                    <td>${actionButtons}</td>
+                `;
+            });
+        };
+
+        const filterData = () => {
+            const filterList = document.getElementById('filterList').value.toLowerCase().trim();
+            const filterDays = document.getElementById('filterDays').value;
+
+            visibleData = allData.filter(entry => {
+                const daysCategory = getDaysCategory(calculateDays(entry.receiptDate));
+                return (entry.listNumber.toLowerCase().trim().includes(filterList) || filterList === '') &&
+                       (daysCategory === filterDays || filterDays === '');
+            });
+
+            render.data(visibleData);
+        };
+        
+        const updateRow = (index) => {
+            const row = document.querySelector(`#dataTableBody tr[data-index='${index}']`);
+            const newData = {
+                receiptDate: row.querySelector('[data-field="receiptDate"]').textContent.trim(),
+                listNumber: row.querySelector('[data-field="listNumber"]').textContent.trim(),
+                location: row.querySelector('[data-field="location"]').textContent.trim(),
+                obs: row.querySelector('[data-field="obs"]').textContent.trim()
+            };
+            
+            dataManager.updateEntry(index, newData);
+            alert('Dados atualizados com sucesso!');
+            
+            allData = dataManager.load();
+            filterData();
+        };
+
+        const deleteRow = (index) => {
+            if (confirm('Tem certeza que deseja excluir este registro?')) {
+                dataManager.deleteEntry(index);
+                alert('Registro excluído com sucesso!');
+                allData = dataManager.load();
+                filterData();
+            }
+        };
+
+        const showLog = (index) => {
+            const entry = allData[index];
+            const logContent = document.getElementById('logContent');
+            logContent.innerHTML = '';
+            
+            if (entry.log && entry.log.length > 0) {
+                entry.log.forEach(logEntry => {
+                    const changes = Object.entries(logEntry.changes).map(([key, value]) => 
+                        `- Campo: ${key}\n  - Anterior: "${value.old}"\n  - Novo: "${value.new}"`
+                    ).join('\n');
+                    logContent.innerHTML += `
+                        <p><strong>Usuário:</strong> ${logEntry.user}</p>
+                        <p><strong>Data/Hora:</strong> ${logEntry.timestamp}</p>
+                        <p><strong>Modificações:</strong></p>
+                        <pre>${changes}</pre>
+                        <hr>
+                    `;
+                });
+            } else {
+                logContent.textContent = 'Nenhuma modificação registrada.';
+            }
+
+            document.getElementById('logModal').style.display = 'flex';
+        };
+
+        const closeModal = () => {
+            document.getElementById('logModal').style.display = 'none';
+        };
+        
+        const exportToExcel = () => {
+            const dataToExport = visibleData.length > 0 ? visibleData : allData;
+            
+            const worksheetData = dataToExport.map(entry => {
+                const daysCategory = getDaysCategory(calculateDays(entry.receiptDate));
+                return [
+                    entry.receiptDate,
+                    daysCategory,
+                    entry.listNumber,
+                    entry.location,
+                    entry.receivedBy,
+                    entry.obs
+                ];
+            });
+
+            const headers = [
+                "Data", "Prazo", "Nº da Lista", "Local", "Recebido por", "Observações"
+            ];
+
+            const finalData = [headers, ...worksheetData];
+            
+            const ws = XLSX.utils.aoa_to_sheet(finalData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Recebimentos");
+            XLSX.writeFile(wb, "recebimentos.xlsx");
+        };
+    </script>
+</body>
+</html>

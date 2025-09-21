@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadastro de Endereço</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Cadastro de Endereço</h1>
+            <div class="user-info">
+                <a href="dashboard.html" style="color: white;">Voltar ao Painel</a> |
+                <a href="#" onclick="auth.logout()" style="color: white;">Sair</a>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2>Novo Endereço</h2>
+            <div id="form-message" class="alert" style="display:none;"></div>
+            <div class="form-group">
+                <label for="area">Área</label>
+                <input type="text" id="area" placeholder="Ex: Corredor A" required>
+            </div>
+            <div class="form-group">
+                <label for="barcodeCode">Código de Endereço (máx. 10 caracteres)</label>
+                <input type="text" id="barcodeCode" maxlength="10" placeholder="Ex: 01C01A01A" required>
+            </div>
+            
+            <div class="barcode-container" style="text-align: center; margin: 30px 0;">
+                <svg id="barcode"></svg>
+            </div>
+            <button class="btn btn-primary" onclick="saveAddress()">Salvar Endereço</button>
+        </div>
+
+        <div class="card">
+            <h2>Importar Endereços em Massa</h2>
+            <div id="bulk-message" class="alert" style="display:none;"></div>
+            <p>Cole os dados abaixo, um endereço por linha, no formato: <strong>ÁREA,CÓDIGO</strong></p>
+            <textarea id="bulkData" rows="5" style="width: 100%;"></textarea>
+            <button class="btn btn-secondary" onclick="saveBulkAddresses()">Salvar em Massa</button>
+        </div>
+
+        <div class="card">
+            <h2>Endereços Cadastrados</h2>
+            <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end;">
+                <div class="form-group" style="flex-grow: 1;">
+                    <label for="filterArea">Filtrar por Área:</label>
+                    <select id="filterArea" onchange="filterAddresses()"></select>
+                </div>
+                <button class="btn btn-secondary" onclick="printAllBarcodes()">Imprimir Todos</button>
+            </div>
+            
+            <table class="user-table">
+                <thead>
+                    <tr>
+                        <th>Área</th>
+                        <th>Código de Barras</th>
+                        <th>Código de Endereço</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="addressTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.0/dist/JsBarcode.all.min.js"></script>
+    <script src="script.js"></script>
+    <script>
+        let allAddresses = [];
+        let visibleAddresses = [];
+
+        const renderAddresses = (data) => {
+            const tableBody = document.getElementById('addressTableBody');
+            tableBody.innerHTML = '';
+            
+            if (!Array.isArray(data) || data.length === 0) {
+                const emptyMessage = document.createElement('tr');
+                emptyMessage.innerHTML = `<td colspan="4" style="text-align: center;">Nenhum endereço cadastrado.</td>`;
+                tableBody.appendChild(emptyMessage);
+                return;
+            }
+
+            data.forEach((entry, index) => {
+                const row = tableBody.insertRow();
+                row.innerHTML = `
+                    <td>${entry.area}</td>
+                    <td class="barcode-cell" data-code="${entry.code}"><svg></svg></td>
+                    <td>${entry.code}</td>
+                    <td>
+                        <button class="btn btn-secondary" onclick="printSingleBarcode(${index})">Imprimir</button>
+                        <button class="btn btn-danger" onclick="deleteAddress(${index})">Excluir</button>
+                    </td>
+                `;
+            });
+            
+            document.querySelectorAll('.barcode-cell').forEach(cell => {
+                const code = cell.getAttribute('data-code');
+                JsBarcode(cell.querySelector('svg'), code, {
+                    format: "CODE128",
+                    displayValue: false
+                });
+            });
+        };
+
+        const populateAreaFilter = (data) => {
+            const filter = document.getElementById('filterArea');
+            filter.innerHTML = `<option value="">Todas as Áreas</option>`;
+            const areas = [...new Set(data.map(item => item.area))];
+            areas.forEach(area => {
+                const option = document.createElement('option');
+                option.value = area;
+                option.textContent = area;
+                filter.appendChild(option);
+            });
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!auth.isLoggedIn()) {
+                window.location.href = 'index.html';
+                return;
+            }
+            
+            allAddresses = addressManager.load();
+            renderAddresses(allAddresses);
+            populateAreaFilter(allAddresses);
+        });
+
+        document.getElementById('barcodeCode').addEventListener('input', () => {
+            const barcodeCode = document.getElementById('barcodeCode').value;
+            const barcodeElement = document.getElementById('barcode');
+            if (barcodeCode) {
+                JsBarcode(barcodeElement, barcodeCode, {
+                    format: "CODE128",
+                    displayValue: true
+                });
+            } else {
+                barcodeElement.innerHTML = '';
+            }
+        });
+
+        const saveAddress = () => {
+            const area = document.getElementById('area').value;
+            const code = document.getElementById('barcodeCode').value;
+            const msgEl = document.getElementById('form-message');
+
+            if (!area || !code) {
+                msgEl.style.display = 'block';
+                msgEl.className = 'alert alert-error';
+                msgEl.textContent = 'Por favor, preencha todos os campos.';
+                return;
+            }
+            
+            if (code.length > 10) {
+                msgEl.style.display = 'block';
+                msgEl.className = 'alert alert-error';
+                msgEl.textContent = 'O código deve ter no máximo 10 caracteres.';
+                return;
+            }
+
+            const newEntry = { area, code };
+            addressManager.addEntry(newEntry);
+            
+            allAddresses = addressManager.load();
+            renderAddresses(allAddresses);
+            populateAreaFilter(allAddresses);
+            
+            msgEl.style.display = 'block';
+            msgEl.className = 'alert alert-success';
+            msgEl.textContent = 'Endereço salvo com sucesso!';
+            
+            document.getElementById('area').value = '';
+            document.getElementById('barcodeCode').value = '';
+            document.getElementById('barcode').innerHTML = '';
+        };
+
+        const saveBulkAddresses = () => {
+            const bulkData = document.getElementById('bulkData').value;
+            const lines = bulkData.split('\n');
+            const newEntries = lines.map(line => {
+                const [area, code] = line.trim().split(',');
+                return { area: area ? area.trim() : '', code: code ? code.trim() : '' };
+            });
+
+            const result = addressManager.addBulkEntries(newEntries);
+            const msgEl = document.getElementById('bulk-message');
+            
+            msgEl.style.display = 'block';
+            if (result.success) {
+                msgEl.className = 'alert alert-success';
+                msgEl.textContent = `${result.count} endereços adicionados com sucesso!`;
+                allAddresses = addressManager.load();
+                renderAddresses(allAddresses);
+                populateAreaFilter(allAddresses);
+                document.getElementById('bulkData').value = '';
+            } else {
+                msgEl.className = 'alert alert-error';
+                msgEl.textContent = result.message;
+            }
+        };
+
+        const filterAddresses = () => {
+            const filterArea = document.getElementById('filterArea').value;
+            if (filterArea) {
+                visibleAddresses = allAddresses.filter(entry => entry.area === filterArea);
+            } else {
+                visibleAddresses = allAddresses;
+            }
+            renderAddresses(visibleAddresses);
+        };
+
+        const deleteAddress = (index) => {
+            const confirmDelete = confirm('Tem certeza que deseja excluir este endereço?');
+            if (confirmDelete) {
+                const data = visibleAddresses.length > 0 ? visibleAddresses : allAddresses;
+                const entryToDelete = data[index];
+                const originalIndex = allAddresses.findIndex(entry => entry.code === entryToDelete.code);
+
+                if (originalIndex !== -1) {
+                    addressManager.deleteEntry(originalIndex);
+                    allAddresses = addressManager.load();
+                    visibleAddresses = allAddresses;
+                    renderAddresses(allAddresses);
+                    populateAreaFilter(allAddresses);
+                    alert('Endereço excluído com sucesso!');
+                }
+            }
+        };
+
+        const printAllBarcodes = () => {
+            const addressesToPrint = visibleAddresses.length > 0 ? visibleAddresses : allAddresses;
+            if (addressesToPrint.length === 0) {
+                alert('Nenhum código de barras para imprimir.');
+                return;
+            }
+
+            const printWindow = window.open('', '_blank');
+            let content = '<html><head><title>Imprimir Códigos de Barras</title>';
+            content += '<style>';
+            content += '@page { size: A4; margin: 10mm; }';
+            content += 'body { font-family: Arial, sans-serif; display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; text-align: center; }';
+            content += '.print-item { width: 100%; padding: 5px; box-sizing: border-box; }';
+            content += '.print-item p { margin: 0; font-size: 14px; }';
+            content += 'svg { width: 100%; height: auto; display: block; margin: 0 auto; }';
+            content += '</style></head><body>';
+
+            addressesToPrint.forEach(item => {
+                content += '<div class="print-item">';
+                content += `<svg class="barcode" data-code="${item.code}"></svg>`;
+                content += `<p>${item.code}</p>`;
+                content += `</div>`;
+            });
+
+            content += '</body></html>';
+            printWindow.document.write(content);
+
+            const jsbarcodeScript = printWindow.document.createElement('script');
+            jsbarcodeScript.src = "https://cdn.jsdelivr.net/npm/jsbarcode@3.11.0/dist/JsBarcode.all.min.js";
+            jsbarcodeScript.onload = () => {
+                printWindow.document.querySelectorAll('.barcode').forEach(svgEl => {
+                    const code = svgEl.getAttribute('data-code');
+                    JsBarcode(svgEl, code, {
+                        format: "CODE128",
+                        displayValue: false
+                    });
+                });
+                setTimeout(() => {
+                    printWindow.print();
+                    printWindow.close();
+                }, 500);
+            };
+            printWindow.document.head.appendChild(jsbarcodeScript);
+        };
+
+        const printSingleBarcode = (index) => {
+            const addressToPrint = visibleAddresses.length > 0 ? visibleAddresses[index] : allAddresses[index];
+            const printWindow = window.open('', '_blank');
+            let content = '<html><head><title>Imprimir Código de Barras</title>';
+            content += '<style>';
+            content += '@page { size: A4; margin: 10mm; }';
+            content += 'body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 90vh; text-align: center; }';
+            content += '.print-item { width: 50%; max-width: 200px; padding: 10px; box-sizing: border-box; }';
+            content += '.print-item p { margin: 0; font-size: 14px; }';
+            content += 'svg { width: 100%; height: auto; display: block; margin: 0 auto; }';
+            content += '</style></head><body>';
+            
+            content += '<div class="print-item">';
+            content += `<svg class="barcode" data-code="${addressToPrint.code}"></svg>`;
+            content += `<p>${addressToPrint.code}</p>`;
+            content += `</div>`;
+
+            content += '</body></html>';
+            printWindow.document.write(content);
+
+            const jsbarcodeScript = printWindow.document.createElement('script');
+            jsbarcodeScript.src = "https://cdn.jsdelivr.net/npm/jsbarcode@3.11.0/dist/JsBarcode.all.min.js";
+            jsbarcodeScript.onload = () => {
+                const svgEl = printWindow.document.querySelector('.barcode');
+                const code = svgEl.getAttribute('data-code');
+                JsBarcode(svgEl, code, {
+                    format: "CODE128",
+                    displayValue: false
+                });
+                setTimeout(() => {
+                    printWindow.print();
+                    printWindow.close();
+                }, 500);
+            };
+            printWindow.document.head.appendChild(jsbarcodeScript);
+        };
+    </script>
+</body>
+</html>
