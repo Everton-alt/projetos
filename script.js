@@ -138,7 +138,7 @@ const dataManager = {
     }
 };
 
-// Lógica de Dados de Endereço (ATUALIZADO)
+// Lógica de Dados de Endereço
 const addressManager = {
     load: () => getStorage('enderecos'),
     save: (data) => setStorage('enderecos', data),
@@ -185,7 +185,7 @@ const render = {
         
         if (!Array.isArray(data) || data.length === 0) {
             const emptyMessage = document.createElement('tr');
-            emptyMessage.innerHTML = `<td colspan="7" style="text-align: center;">Nenhum recebimento registrado.</td>`;
+            emptyMessage.innerHTML = `<td colspan="8" style="text-align: center;">Nenhum recebimento registrado.</td>`;
             tableBody.appendChild(emptyMessage);
             return;
         }
@@ -212,6 +212,7 @@ const render = {
                 <td contenteditable="false">${daysSinceReceipt} dias (${daysCategory})</td>
                 <td contenteditable="true" data-field="listNumber">${entry.listNumber}</td>
                 <td contenteditable="true" data-field="location">${entry.location}</td>
+                <td>${entry.photo ? `<img src="${entry.photo}" class="photo-icon" onclick="showPhotoModal('${entry.photo}')">` : 'N/A'}</td>
                 <td contenteditable="false">${entry.receivedBy}</td>
                 <td contenteditable="true" data-field="obs">${entry.obs}</td>
                 <td>${actionButtons}</td>
@@ -234,7 +235,6 @@ const render = {
                     <button class="btn btn-danger" onclick="deleteUser('${user.username}')">Excluir</button>
                 </td>
             `;
-            // Desabilita os botões para o usuário admin
             if (user.username === 'admin') {
                 row.querySelector('button[onclick*="editUserRole"]').disabled = true;
                 row.querySelector('button[onclick*="deleteUser"]').disabled = true;

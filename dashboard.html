@@ -50,6 +50,10 @@
                 <label for="obs">Observações</label>
                 <textarea id="obs" placeholder="Ex: Mercadoria com avaria."></textarea>
             </div>
+            <div class="form-group">
+                <label for="photo">Foto do Recebimento</label>
+                <input type="file" id="photo" accept="image/*" capture="camera">
+            </div>
             <button class="btn btn-primary" onclick="addEntry()">Registrar Recebimento</button>
         </div>
         
@@ -85,6 +89,7 @@
             const receivedBy = document.getElementById('receivedBy').value;
             const location = document.getElementById('location').value;
             const obs = document.getElementById('obs').value;
+            const photoFile = document.getElementById('photo').files[0];
             const msgEl = document.getElementById('form-message');
 
             if (!receiptDate || !listNumber || !receivedBy) {
@@ -94,16 +99,37 @@
                 return;
             }
 
-            const newEntry = {
-                receiptDate,
-                listNumber,
-                receivedBy,
-                location,
-                obs
-            };
-            
-            dataManager.addEntry(newEntry);
-            
+            if (photoFile) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const newEntry = {
+                        receiptDate,
+                        listNumber,
+                        receivedBy,
+                        location,
+                        obs,
+                        photo: event.target.result // Salva a foto como Data URL
+                    };
+                    dataManager.addEntry(newEntry);
+                    showSuccessMessage();
+                };
+                reader.readAsDataURL(photoFile);
+            } else {
+                const newEntry = {
+                    receiptDate,
+                    listNumber,
+                    receivedBy,
+                    location,
+                    obs,
+                    photo: null
+                };
+                dataManager.addEntry(newEntry);
+                showSuccessMessage();
+            }
+        };
+
+        const showSuccessMessage = () => {
+            const msgEl = document.getElementById('form-message');
             msgEl.className = 'alert alert-success';
             msgEl.textContent = 'Novo recebimento registrado com sucesso!';
             msgEl.style.display = 'block';
@@ -113,6 +139,7 @@
             document.getElementById('listNumber').value = '';
             document.getElementById('location').value = '';
             document.getElementById('obs').value = '';
+            document.getElementById('photo').value = ''; // Limpa o campo de foto
 
             dashboard.updateStats();
         };

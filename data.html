@@ -5,27 +5,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Planilha de Recebimentos</title>
     <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
     <div class="container">
         <div class="header">
             <h1>Planilha de Recebimentos</h1>
             <div class="user-info">
-                <span id="welcomeMessage"></span> |
-                <span>Dados de Recebimento</span> |
-                <a href="dashboard.html" style="color: white;">Voltar ao Painel</a>
-                <a href="#" onclick="auth.logout()" style="color: white; margin-left: 10px;">Sair</a>
+                <span id="welcomeMessage"></span>
+                <span>|</span>
+                <a href="dashboard.html">Voltar ao Painel</a>
+                <span>|</span>
+                <a href="#" onclick="auth.logout()">Sair</a>
             </div>
         </div>
         
         <div class="card">
             <h2>Filtros</h2>
-            <div style="display: flex; gap: 15px; flex-wrap: wrap;">
-                <div class="form-group" style="flex-grow: 1;">
+            <div class="filter-grid">
+                <div class="form-group">
                     <label for="filterList">Nº da Lista:</label>
                     <input type="text" id="filterList" placeholder="Pesquisar por Nº da Lista">
                 </div>
-                <div class="form-group" style="flex-grow: 1;">
+                <div class="form-group">
                     <label for="filterDays">Prazo:</label>
                     <select id="filterDays">
                         <option value="">Todos</option>
@@ -40,8 +42,10 @@
                     </select>
                 </div>
             </div>
-            <button class="btn btn-primary" style="margin-top: 15px;" onclick="filterData()">Filtrar</button>
-            <button class="btn btn-secondary" style="margin-top: 15px;" onclick="exportToExcel()">Exportar para Excel</button>
+            <div style="margin-top: 1.5rem; display: flex; gap: 10px;">
+                <button class="btn btn-primary" onclick="filterData()">Filtrar</button>
+                <button class="btn btn-secondary" onclick="exportToExcel()">Exportar para Excel</button>
+            </div>
         </div>
 
         <table>
@@ -51,13 +55,14 @@
                     <th>Prazo</th>
                     <th>Nº da Lista</th>
                     <th>Local</th>
+                    <th>Foto</th>
                     <th>Recebido por</th>
                     <th>Obs</th>
                     <th>Ações</th>
                 </tr>
             </thead>
             <tbody id="dataTableBody">
-                </tbody>
+            </tbody>
         </table>
     </div>
 
@@ -69,11 +74,17 @@
         </div>
     </div>
     
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <div id="photoModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closePhotoModal()">&times;</span>
+            <img id="modal-photo" src="" alt="Foto do Lote">
+        </div>
+    </div>
+    
     <script src="script.js"></script>
     <script>
         let allData = [];
-        let visibleData = []; 
+        let visibleData = [];
 
         document.addEventListener('DOMContentLoaded', () => {
             const user = auth.getCurrentUser();
@@ -82,10 +93,10 @@
             }
             
             allData = dataManager.load();
-            render.data(allData); 
+            visibleData = allData;
+            render.data(visibleData); 
         });
 
-        // Adapta a função render.data para incluir o botão de exclusão para administradores
         render.data = (data) => {
             if (!auth.isLoggedIn()) {
                 window.location.href = 'index.html';
@@ -97,7 +108,7 @@
             
             if (!Array.isArray(data) || data.length === 0) {
                 const emptyMessage = document.createElement('tr');
-                emptyMessage.innerHTML = `<td colspan="7" style="text-align: center;">Nenhum recebimento registrado.</td>`;
+                emptyMessage.innerHTML = `<td colspan="8" style="text-align: center; color: #888;">Nenhum recebimento registrado.</td>`;
                 tableBody.appendChild(emptyMessage);
                 return;
             }
@@ -108,21 +119,22 @@
                 const daysSinceReceipt = calculateDays(entry.receiptDate);
                 const daysCategory = getDaysCategory(daysSinceReceipt);
 
-                // Constrói os botões de ação
                 let actionButtons = `
-                    <button class="btn btn-secondary" onclick="updateRow(${index})">Atualizar</button>
+                    <button class="btn btn-primary" onclick="updateRow(${index})">Atualizar</button>
                     <button class="btn btn-secondary" onclick="showLog(${index})">Ver Log</button>
                 `;
-                // Adiciona o botão de exclusão APENAS para administradores
                 if (isAdmin) {
                     actionButtons += `<button class="btn btn-danger" onclick="deleteRow(${index})">Excluir</button>`;
                 }
+                
+                let photoCell = entry.photo ? `<img src="${entry.photo}" class="photo-icon" onclick="showPhotoModal('${entry.photo}')" style="max-width: 50px;">` : 'N/A';
                 
                 row.innerHTML = `
                     <td contenteditable="true" data-field="receiptDate">${entry.receiptDate}</td>
                     <td contenteditable="false">${daysSinceReceipt} dias (${daysCategory})</td>
                     <td contenteditable="true" data-field="listNumber">${entry.listNumber}</td>
                     <td contenteditable="true" data-field="location">${entry.location}</td>
+                    <td>${photoCell}</td>
                     <td contenteditable="false">${entry.receivedBy}</td>
                     <td contenteditable="true" data-field="obs">${entry.obs}</td>
                     <td>${actionButtons}</td>
@@ -136,7 +148,7 @@
 
             visibleData = allData.filter(entry => {
                 const daysCategory = getDaysCategory(calculateDays(entry.receiptDate));
-                return (entry.listNumber.toLowerCase().trim().includes(filterList) || filterList === '') &&
+                return (String(entry.listNumber).toLowerCase().trim().includes(filterList) || filterList === '') &&
                        (daysCategory === filterDays || filterDays === '');
             });
 
@@ -196,6 +208,16 @@
         const closeModal = () => {
             document.getElementById('logModal').style.display = 'none';
         };
+
+        const showPhotoModal = (photoData) => {
+            const modalPhoto = document.getElementById('modal-photo');
+            modalPhoto.src = photoData;
+            document.getElementById('photoModal').style.display = 'flex';
+        };
+
+        const closePhotoModal = () => {
+            document.getElementById('photoModal').style.display = 'none';
+        };
         
         const exportToExcel = () => {
             const dataToExport = visibleData.length > 0 ? visibleData : allData;
@@ -208,12 +230,13 @@
                     entry.listNumber,
                     entry.location,
                     entry.receivedBy,
-                    entry.obs
+                    entry.obs,
+                    entry.photo ? 'Sim' : 'Não'
                 ];
             });
 
             const headers = [
-                "Data", "Prazo", "Nº da Lista", "Local", "Recebido por", "Observações"
+                "Data", "Prazo", "Nº da Lista", "Local", "Recebido por", "Observações", "Foto"
             ];
 
             const finalData = [headers, ...worksheetData];

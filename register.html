@@ -5,34 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gerenciar Usuários</title>
     <link rel="stylesheet" href="style.css">
-    <style>
-        /* Estilos adicionais para a tabela de usuários */
-        .user-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-        .user-table th, .user-table td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: left;
-        }
-        .user-table th {
-            background-color: #f2f2f2;
-        }
-        .user-table button {
-            margin-right: 5px;
-        }
-    </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>Painel de Administração</h1>
+            <h1>Gerenciamento de Usuários</h1>
             <div class="user-info">
-                <span>Gerenciamento de Usuários</span> |
-                <a href="dashboard.html" style="color: white;">Voltar ao Painel</a> |
-                <a href="#" onclick="auth.logout()" style="color: white;">Sair</a>
+                <a href="dashboard.html">Voltar ao Painel</a>
+                <span>|</span>
+                <a href="#" onclick="auth.logout()">Sair</a>
             </div>
         </div>
         
@@ -40,11 +21,11 @@
             <h2>Cadastrar Novo Usuário</h2>
             <div id="register-message" class="alert" style="display:none;"></div>
             <div class="form-group">
-                <label for="register-name">Nome do Colaborador</label>
+                <label for="register-name">Nome</label>
                 <input type="text" id="register-name" required>
             </div>
             <div class="form-group">
-                <label for="register-username">Login (Usuário)</label>
+                <label for="register-username">Nome de Usuário</label>
                 <input type="text" id="register-username" required>
             </div>
             <div class="form-group">
@@ -53,37 +34,34 @@
             </div>
             <div class="form-group">
                 <label for="register-role">Papel</label>
-                <select id="register-role">
+                <select id="register-role" required>
                     <option value="user">Usuário Comum</option>
                     <option value="admin">Administrador</option>
                 </select>
             </div>
-            <button class="btn btn-secondary" onclick="handleRegister()">Cadastrar</button>
-            <div style="margin-top: 40px;">
-                <h3>Usuários Cadastrados</h3>
-                <table class="user-table">
-                    <thead>
-                        <tr>
-                            <th>Nome</th>
-                            <th>Login</th>
-                            <th>Papel</th>
-                            <th>Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody id="userTableBody"></tbody>
-                </table>
-            </div>
+            <button class="btn btn-primary" onclick="handleRegister()">Cadastrar Usuário</button>
+        </div>
+
+        <div class="card">
+            <h2>Lista de Usuários</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Usuário</th>
+                        <th>Papel</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="userTableBody">
+                    </tbody>
+            </table>
         </div>
     </div>
-
+    
     <script src="script.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            if (!auth.isLoggedIn() || !auth.isRole('admin')) {
-                alert('Acesso negado. Apenas administradores podem acessar este painel.');
-                window.location.href = 'index.html';
-                return;
-            }
             render.populateUsersTable();
         });
 
@@ -95,10 +73,16 @@
             const msgEl = document.getElementById('register-message');
             
             const result = auth.addUser(name, username, password, role);
-            msgEl.style.display = 'block';
-            msgEl.className = result.success ? 'alert alert-success' : 'alert alert-error';
-            msgEl.textContent = result.message;
             
+            msgEl.style.display = 'block';
+            if (result.success) {
+                msgEl.className = 'alert alert-success';
+                msgEl.textContent = 'Usuário registrado com sucesso!';
+            } else {
+                msgEl.className = 'alert alert-error';
+                msgEl.textContent = result.message;
+            }
+
             if (result.success) {
                 render.populateUsersTable();
                 document.getElementById('register-name').value = '';
@@ -108,7 +92,7 @@
         };
 
         const editUserRole = (username) => {
-            const newRole = prompt(`Digite o novo papel para o usuário "${username}" (user ou admin):`);
+            const newRole = prompt(`Digite o novo papel para o usuário \"${username}\" (user ou admin):`);
             if (newRole && (newRole === 'user' || newRole === 'admin')) {
                 const result = auth.updateUserRole(username, newRole);
                 if (result.success) {
@@ -118,12 +102,12 @@
                     alert(result.message);
                 }
             } else if (newRole !== null) {
-                alert('Papel inválido. Por favor, digite "user" ou "admin".');
+                alert('Papel inválido. Por favor, digite \"user\" ou \"admin\".');
             }
         };
 
         const deleteUser = (username) => {
-            if (confirm(`Tem certeza que deseja excluir o usuário "${username}"?`)) {
+            if (confirm(`Tem certeza que deseja excluir o usuário \"${username}\"?`)) {
                 const result = auth.deleteUser(username);
                 if (result.success) {
                     alert('Usuário excluído com sucesso!');
