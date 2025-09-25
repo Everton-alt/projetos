@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadastrar Material</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="form-container">
+        <a href="dashboard.html" class="nav-link">← Voltar para o Dashboard</a>
+        <h1 id="pageTitle">Cadastrar Novo Material</h1>
+        <form id="materialForm">
+            <input type="hidden" id="originalCodigo">
+            
+            <label for="codigo">Código do material*:</label>
+            <input type="text" id="codigo" required>
+
+            <label for="texto">Texto do material:</label>
+            <textarea id="texto" rows="3"></textarea>
+
+            <label for="quantidade">Quantidade*:</label>
+            <input type="number" id="quantidade" required>
+
+            <label for="lote">Lote*:</label>
+            <input type="text" id="lote" required>
+
+            <label for="validade">Validade:</label>
+            <input type="date" id="validade">
+
+            <label for="endereco">Endereço*:</label>
+            <input type="text" id="endereco" required>
+
+            <button type="submit">Salvar Material</button>
+        </form>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.getElementById('materialForm');
+            const pageTitle = document.getElementById('pageTitle');
+            const codigoInput = document.getElementById('codigo');
+            const originalCodigoInput = document.getElementById('originalCodigo');
+
+            const getMateriais = () => JSON.parse(localStorage.getItem('materiais')) || [];
+            const saveMateriais = (materiais) => localStorage.setItem('materiais', JSON.stringify(materiais));
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const codigoParaEditar = urlParams.get('editar');
+
+            if (codigoParaEditar) {
+                pageTitle.textContent = 'Editar Material';
+                const materiais = getMateriais();
+                const material = materiais.find(m => m.codigo === codigoParaEditar);
+                if (material) {
+                    codigoInput.value = material.codigo;
+                    codigoInput.disabled = true;
+                    originalCodigoInput.value = material.codigo;
+                    document.getElementById('texto').value = material.texto;
+                    document.getElementById('quantidade').value = material.quantidade;
+                    document.getElementById('lote').value = material.lote;
+                    document.getElementById('validade').value = material.validade;
+                    document.getElementById('endereco').value = material.endereco;
+                }
+            }
+            
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const materiais = getMateriais();
+                const codigoOriginal = originalCodigoInput.value;
+
+                const materialData = {
+                    codigo: codigoInput.value,
+                    texto: document.getElementById('texto').value,
+                    quantidade: document.getElementById('quantidade').value,
+                    lote: document.getElementById('lote').value,
+                    validade: document.getElementById('validade').value,
+                    endereco: document.getElementById('endereco').value,
+                    log: `Criado/Atualizado em: ${new Date().toLocaleString('pt-BR')}`
+                };
+
+                if (codigoOriginal) {
+                    const index = materiais.findIndex(m => m.codigo === codigoOriginal);
+                    if (index !== -1) materiais[index] = materialData;
+                } else {
+                    materiais.push(materialData);
+                }
+                
+                saveMateriais(materiais);
+                alert('Material salvo com sucesso!');
+                window.location.href = 'dashboard.html';
+            });
+        });
+    </script>
+</body>
+</html>

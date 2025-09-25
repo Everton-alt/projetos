@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Materiais</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+    <div class="header">
+        <h1>Dashboard de Materiais</h1>
+        <div class="header-actions">
+            <a href="cadastro.html" class="btn btn-primary">Cadastrar Novo Material</a>
+            <button id="exportBtn" class="btn btn-export">Exportar para Excel</button>
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Código</th>
+                <th>Texto</th>
+                <th>Qtd</th>
+                <th>Lote</th>
+                <th>Validade</th>
+                <th>Endereço</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody id="materialTableBody">
+            </tbody>
+    </table>
+
+    <dialog id="logDialog">
+        <h2>Log do Material</h2>
+        <p id="logContent"></p>
+        <button id="closeDialog" class="btn">Fechar</button>
+    </dialog>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const tableBody = document.getElementById('materialTableBody');
+            const logDialog = document.getElementById('logDialog');
+            const logContent = document.getElementById('logContent');
+            const closeDialogBtn = document.getElementById('closeDialog');
+            const exportBtn = document.getElementById('exportBtn');
+
+            const getMateriais = () => JSON.parse(localStorage.getItem('materiais')) || [];
+            const saveMateriais = (materiais) => localStorage.setItem('materiais', JSON.stringify(materiais));
+
+            const renderTable = () => {
+                tableBody.innerHTML = '';
+                const materiais = getMateriais();
+                materiais.forEach((material, index) => {
+                    const row = document.createElement('tr');
+                    const validadeFormatada = material.validade 
+                        ? new Date(material.validade).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) 
+                        : 'N/A';
+                    
+                    row.innerHTML = `
+                        <td>${index + 1}</td>
+                        <td>${material.codigo}</td>
+                        <td>${material.texto}</td>
+                        <td>${material.quantidade}</td>
+                        <td>${material.lote}</td>
+                        <td>${validadeFormatada}</td>
+                        <td>${material.endereco}</td>
+                        <td>
+                            <a href="cadastro.html?editar=${material.codigo}" class="action-btn edit-btn">Editar</a>
+                            <button class="action-btn delete-btn" data-index="${index}">Excluir</button>
+                            <button class="action-btn log-btn" data-codigo="${material.codigo}">Log</button>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            };
+            
+            tableBody.addEventListener('click', (e) => {
+                const index = e.target.dataset.index;
+                const codigo = e.target.dataset.codigo;
+                if (!index && !codigo) return;
+
+                const materiais = getMateriais();
+                
+                // Ação de Excluir
+                if (e.target.classList.contains('delete-btn')) {
+                    if (confirm(`Tem certeza que deseja excluir o material de código ${materiais[index].codigo}?`)) {
+                        materiais.splice(index, 1);
+                        saveMateriais(materiais);
+                        renderTable();
+                    }
+                }
+
+                // Ação de Log
+                if (e.target.classList.contains('log-btn')) {
+                    const material = materiais.find(m => m.codigo === codigo);
+                    logContent.textContent = material.log || 'Nenhum log disponível.';
+                    logDialog.showModal();
+                }
+            });
+            
+            closeDialogBtn.addEventListener('click', () => logDialog.close());
+
+            // Função para exportar para Excel
+            exportBtn.addEventListener('click', () => {
+                const materials = getMateriais();
+                const headers = ["Código", "Texto", "Qtd", "Lote", "Validade", "Endereço"];
+                const data = materials.map(m => [
+                    m.codigo, 
+                    m.texto, 
+                    m.quantidade, 
+                    m.lote, 
+                    m.validade ? new Date(m.validade).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : 'N/A',
+                    m.endereco
+                ]);
+                
+                const worksheet = XLSX.utils.aoa_to_sheet([headers, ...data]);
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbook, worksheet, "Materiais");
+
+                const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+                const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'materiais.xlsx';
+                a.click();
+                URL.revokeObjectURL(url);
+            });
+
+            renderTable();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Controle de Materiais</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="login-container">
+        <h2>Acesso ao Sistema</h2>
+        <form id="loginForm">
+            <div>
+                <label for="usuario">Usuário:</label>
+                <input type="text" id="usuario" name="usuario" value="admin">
+            </div>
+            <div>
+                <label for="senha">Senha:</label>
+                <input type="password" id="senha" name="senha" value="1234">
+            </div>
+            <button type="submit" class="btn btn-primary">Entrar</button>
+            <p id="errorMessage" class="error">Usuário ou senha inválidos!</p>
+        </form>
+    </div>
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const usuario = document.getElementById('usuario').value;
+            const senha = document.getElementById('senha').value;
+            if (usuario === 'admin' && senha === '1234') {
+                window.location.href = 'dashboard.html';
+            } else {
+                document.getElementById('errorMessage').style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>

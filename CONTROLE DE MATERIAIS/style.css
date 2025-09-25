@@ -1,0 +1,251 @@
+/* Estilos Gerais para todos os arquivos */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #e8f5e9; /* Light green background */
+    color: #333;
+    margin: 0;
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    background-image: url('http://googleusercontent.com/image_collection/image_retrieval/16300396302215440235_0');
+    background-size: cover; /* Faz a imagem cobrir toda a área */
+    background-attachment: fixed; /* Mantém a imagem fixa ao rolar a página */
+    background-position: center; /* Centraliza a imagem */
+}
+
+/* Containers principais */
+.login-container, .form-container, table {
+    background: rgba(255, 255, 255, 0.9); /* Adiciona uma leve transparência para a imagem aparecer por trás */
+    backdrop-filter: blur(5px); /* Efeito de desfoque para o conteúdo ficar mais legível */
+    padding: 2.5rem;
+    border-radius: 12px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    max-width: 500px;
+    width: 100%;
+    margin-top: 50px;
+}
+
+/* Cabeçalho do Dashboard */
+.header {
+    width: 100%;
+    max-width: 1000px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    gap: 1rem; /* Espaçamento entre os itens */
+}
+
+.header h1 {
+    color: #2e7d32; /* Darker green */
+    margin: 0;
+}
+
+.header-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap; /* Permite que os botões quebrem a linha em telas pequenas */
+}
+
+/* Botões de Ação */
+.btn, .nav-link, .action-btn {
+    padding: 0.8rem 1.5rem;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1rem;
+    text-decoration: none;
+    display: inline-block;
+    transition: background-color 0.3s ease;
+    text-align: center;
+}
+
+.btn-primary, .action-btn.edit-btn, .nav-link {
+    background-color: #4caf50; /* Green primary color */
+    color: white;
+}
+
+.btn-primary:hover, .action-btn.edit-btn:hover, .nav-link:hover {
+    background-color: #388e3c; /* Darker green on hover */
+}
+
+.btn-export {
+    background-color: #8bc34a; /* Lime green */
+    color: white;
+}
+
+.btn-export:hover {
+    background-color: #689f38;
+}
+
+.action-btn.delete-btn {
+    background-color: #d32f2f; /* Red */
+    color: white;
+}
+
+.action-btn.delete-btn:hover {
+    background-color: #c62828;
+}
+
+.action-btn.log-btn {
+    background-color: #ffc107; /* Amber */
+    color: black;
+}
+
+.action-btn.log-btn:hover {
+    background-color: #ffb300;
+}
+
+/* Tabela de Materiais */
+table {
+    max-width: 1000px;
+    border-collapse: collapse;
+    margin-top: 1.5rem;
+    background-color: rgba(255, 255, 255, 0.9); /* Adicionado transparência aqui */
+    box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+th, td {
+    border: 1px solid #ddd;
+    padding: 1rem;
+    text-align: left;
+}
+
+th {
+    background-color: #f1f8e9; /* Very light green */
+    font-weight: bold;
+    color: #2e7d32;
+}
+
+tr:nth-child(even) {
+    background-color: #f9fbe7; /* Even lighter green */
+}
+
+tr:hover {
+    background-color: #e8f5e9;
+}
+
+/* Formulário */
+label {
+    display: block;
+    margin-top: 1.5rem;
+    font-weight: 600;
+}
+
+input, textarea {
+    width: 100%;
+    padding: 0.8rem;
+    box-sizing: border-box;
+    margin-top: 0.5rem;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    transition: border-color 0.3s ease;
+}
+
+input:focus, textarea:focus {
+    border-color: #4caf50;
+    outline: none;
+}
+
+/* Garante que os inputs de texto serão em letras maiúsculas */
+input[type="text"] {
+    text-transform: uppercase;
+}
+
+button[type="submit"] {
+    background-color: #4caf50;
+    color: white;
+    width: 100%;
+    padding: 1rem;
+    margin-top: 2rem;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1.1rem;
+    transition: background-color 0.3s ease;
+}
+
+button[type="submit"]:hover {
+    background-color: #388e3c;
+}
+
+.error {
+    color: #d32f2f;
+    text-align: center;
+    margin-top: 1rem;
+    font-weight: 600;
+}
+
+/* Modal de Log */
+dialog {
+    border: none;
+    border-radius: 12px;
+    padding: 2rem;
+    min-width: 350px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+dialog::backdrop {
+    background-color: rgba(0, 0, 0, 0.6);
+}
+
+dialog h2 {
+    color: #2e7d32;
+    margin-top: 0;
+}
+
+dialog p {
+    white-space: pre-wrap;
+}
+
+/* MEDIA QUERIES para Responsividade */
+@media (max-width: 768px) {
+    body {
+        padding: 1rem;
+    }
+
+    .login-container, .form-container {
+        padding: 1.5rem;
+        margin-top: 20px;
+    }
+    
+    .header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1.5rem;
+    }
+
+    .header-actions {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .btn, .nav-link, .action-btn {
+        padding: 0.6rem 1rem;
+        font-size: 0.9rem;
+    }
+    
+    table {
+        font-size: 0.8rem;
+        display: block;
+        overflow-x: auto;
+    }
+
+    td, th {
+        white-space: nowrap; /* Impede a quebra de linha nas células */
+    }
+
+    .action-btn {
+        padding: 0.4rem 0.8rem;
+    }
+
+    .form-container button[type="submit"] {
+        padding: 0.8rem;
+        font-size: 1rem;
+    }
+}

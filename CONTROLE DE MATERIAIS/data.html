@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Planilha de Materiais</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Planilha de Materiais</h1>
+            <div class="user-info">
+                <span id="welcomeMessage"></span> |
+                <a href="dashboard.html" style="color: white;">Voltar ao Painel</a> |
+                <a href="#" onclick="auth.logout()" style="color: white;">Sair</a>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2>Filtros</h2>
+            <div class="filter-grid">
+                <div class="form-group">
+                    <label for="filterMaterialCode">Código do Material:</label>
+                    <input type="text" id="filterMaterialCode" placeholder="Pesquisar por Código">
+                </div>
+                <div class="form-group">
+                    <label for="filterLot">Lote:</label>
+                    <input type="text" id="filterLot" placeholder="Pesquisar por Lote">
+                </div>
+            </div>
+            <div style="margin-top: 1.5rem; display: flex; gap: 10px;">
+                <button class="btn btn-primary" onclick="filterData()">Filtrar</button>
+                <button class="btn btn-secondary" onclick="exportToExcel()">Exportar para Excel</button>
+            </div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Código do Material</th>
+                    <th>Texto do Material</th>
+                    <th>Quantidade</th>
+                    <th>Lote</th>
+                    <th>Validade</th>
+                    <th>Endereço</th>
+                    <th>Registrado por</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody id="dataTableBody">
+            </tbody>
+        </table>
+    </div>
+
+    <div id="logModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal()">&times;</span>
+            <h2>Histórico de Modificações</h2>
+            <pre id="logContent"></pre>
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+    <script>
+        let allData = [];
+        let visibleData = [];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const user = auth.getCurrentUser();
+            if (user && user.name) {
+                document.getElementById('welcomeMessage').textContent = `Bem-vindo, ${user.name}!`;
+            }
+            
+            allData = dataManager.load('materials');
+            visibleData = allData;
+            render.data(visibleData); 
+        });
+
+        render.data = (data) => {
+            if (!auth.isLoggedIn()) {
+                window.location.href = 'index.html';
+            }
+            const user = auth.getCurrentUser();
+            const isAdmin = user && user.role === 'admin';
+            const tableBody = document.getElementById('dataTableBody');
+            tableBody.innerHTML = '';
+            
+            if (!Array.isArray(data) || data.length === 0) {
+                const emptyMessage = document.createElement('tr');
+                emptyMessage.innerHTML = `<td colspan="8" style="text-align: center; color: #888;">Nenhum material registrado.</td>`;
+                tableBody.appendChild(emptyMessage);
+                return;
+            }
+            
+            data.forEach((entry, index) => {
+                const row = tableBody.insertRow();
+                row.setAttribute('data-index', index);
+
+                let actionButtons = `
+                    <button class="btn btn-primary" onclick="updateRow(${index})">Atualizar</button>
+                    <button class="btn btn-secondary" onclick="showLog(${index})">Ver Log</button>
+                `;
+                if (isAdmin) {
+                    actionButtons += `<button class="btn btn-danger" onclick="deleteRow(${index})">Excluir</button>`;
+                }
+                
+                row.innerHTML = `
+                    <td contenteditable="true" data-field="materialCode">${entry.materialCode}</td>
+                    <td contenteditable="true" data-field="materialText">${entry.materialText}</td>
+                    <td contenteditable="true" data-field="quantity">${entry.quantity}</td>
+                    <td contenteditable="true" data-field="lot">${entry.lot}</td>
+                    <td contenteditable="true" data-field="expirationDate">${entry.expirationDate}</td>
+                    <td contenteditable="true" data-field="address">${entry.address}</td>
+                    <td contenteditable="false">${entry.registeredBy}</td>
+                    <td>${actionButtons}</td>
+                `;
+            });
+        };
+
+        const filterData = () => {
+            const filterMaterialCode = document.getElementById('filterMaterialCode').value.toLowerCase().trim();
+            const filterLot = document.getElementById('filterLot').value.toLowerCase().trim();
+
+            visibleData = allData.filter(entry => {
+                return (String(entry.materialCode).toLowerCase().trim().includes(filterMaterialCode) || filterMaterialCode === '') &&
+                       (String(entry.lot).toLowerCase().trim().includes(filterLot) || filterLot === '');
+            });
+
+            render.data(visibleData);
+        };
+        
+        const updateRow = (index) => {
+            const row = document.querySelector(`#dataTableBody tr[data-index='${index}']`);
+            const newData = {
+                materialCode: row.querySelector('[data-field="materialCode"]').textContent.trim(),
+                materialText: row.querySelector('[data-field="materialText"]').textContent.trim(),
+                quantity: row.querySelector('[data-field="quantity"]').textContent.trim(),
+                lot: row.querySelector('[data-field="lot"]').textContent.trim(),
+                expirationDate: row.querySelector('[data-field="expirationDate"]').textContent.trim(),
+                address: row.querySelector('[data-field="address"]').textContent.trim()
+            };
+            
+            dataManager.updateEntry(index, newData, 'materials');
+            alert('Dados atualizados com sucesso!');
+            
+            allData = dataManager.load('materials');
+            filterData();
+        };
+
+        const deleteRow = (index) => {
+            if (confirm('Tem certeza que deseja excluir este registro?')) {
+                dataManager.deleteEntry(index, 'materials');
+                alert('Registro excluído com sucesso!');
+                allData = dataManager.load('materials');
+                filterData();
+            }
+        };
+
+        const showLog = (index) => {
+            const entry = allData[index];
+            const logContent = document.getElementById('logContent');
+            logContent.innerHTML = '';
+            
+            if (entry.log && entry.log.length > 0) {
+                entry.log.forEach(logEntry => {
+                    const changes = Object.entries(logEntry.changes).map(([key, value]) => 
+                        `- Campo: ${key}\n  - Anterior: "${value.old}"\n  - Novo: "${value.new}"`
+                    ).join('\n');
+                    logContent.innerHTML += `
+                        <p><strong>Usuário:</strong> ${logEntry.user}</p>
+                        <p><strong>Data/Hora:</strong> ${logEntry.timestamp}</p>
+                        <p><strong>Modificações:</strong></p>
+                        <pre>${changes}</pre>
+                        <hr>
+                    `;
+                });
+            } else {
+                logContent.textContent = 'Nenhuma modificação registrada.';
+            }
+
+            document.getElementById('logModal').style.display = 'flex';
+        };
+
+        const closeModal = () => {
+            document.getElementById('logModal').style.display = 'none';
+        };
+        
+        const exportToExcel = () => {
+            const dataToExport = visibleData.length > 0 ? visibleData : allData;
+            
+            const worksheetData = dataToExport.map(entry => [
+                entry.materialCode,
+                entry.materialText,
+                entry.quantity,
+                entry.lot,
+                entry.expirationDate,
+                entry.address,
+                entry.registeredBy
+            ]);
+
+            const headers = [
+                "Código do Material", "Texto do Material", "Quantidade", "Lote", "Validade", "Endereço", "Registrado por"
+            ];
+
+            const finalData = [headers, ...worksheetData];
+            
+            const ws = XLSX.utils.aoa_to_sheet(finalData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Controle de Materiais");
+            XLSX.writeFile(wb, "controle_de_materiais.xlsx");
+        };
+    </script>
+</body>
+</html>
