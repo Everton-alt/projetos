@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <input type="file" id="fileInput">
+    <button onclick="processar()">Importar para Supabase</button>
+
+    <script>
+        const supabase = supabase.createClient(
+            'https://kdbrlmvcxzgwylpdcfmq.supabase.co', 
+            'sb_publishable_MJfMXMVTTzR06FrDoZcx-A_ULkcUtxg'
+        );
+
+        async function processar() {
+            // Lógica de leitura do CSV/Excel...
+            // Após converter para JSON:
+            const { error } = await supabase.from('etiquetas').insert(jsonDosDados);
+            
+            if (error) alert("Erro: " + error.message);
+            else alert("Sucesso!");
+        }
+    </script>
+</body>
+</html>
