@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+    <input type="text" id="searchInput" placeholder="Digite o código..." onkeyup="consultar()">
+    <div id="resultado"></div>
+
+    <script>
+        const supabase = supabase.createClient(
+            'https://kdbrlmvcxzgwylpdcfmq.supabase.co', 
+            'sb_publishable_MJfMXMVTTzR06FrDoZcx-A_ULkcUtxg' // Substitua pela chave que aparece na imagem image_393165.png
+        );
+
+        async function consultar() {
+            const val = document.getElementById("searchInput").value;
+            const resDiv = document.getElementById("resultado");
+            if (!val) { resDiv.innerHTML = ""; return; }
+
+            const { data, error } = await supabase
+                .from('etiquetas')
+                .select('*')
+                .or(`codigo_antigo.eq.${val},codigo_novo.eq.${val}`);
+
+            if (data) {
+                resDiv.innerHTML = "";
+                data.forEach((item, index) => {
+                    resDiv.innerHTML += `<div>${item.descricao} - ${item.lote}</div>`;
+                    // Lógica dos QR Codes aqui...
+                });
+            }
+        }
+    </script>
+</body>
+</html>
